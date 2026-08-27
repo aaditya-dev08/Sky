@@ -1,0 +1,39 @@
+# Core Framework
+typer>=0.9.0
+rich>=13.7.0
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pyyaml>=6.0
+patch>=1.16
+
+# LLM Integration
+groq>=0.9.0
+langgraph>=0.0.20
+langchain-core>=0.1.0
+fastembed>=0.3.0
+onnxruntime>=1.15.0
+
+# Database & Storage
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+lancedb>=0.4.0
+
+# Tools & Operations
+gitpython>=3.1.0
+docker>=6.1.0
+tenacity>=8.2.0
+
+# Networking & Async
+uvicorn>=0.24.0
+httpx>=0.25.0
+
+# --- Development Dependencies ---
+# These can be installed via: pip install -e .[dev]
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# pytest-cov>=4.1.0
+# mypy>=1.6.0
+# ruff>=0.1.0
+# black>=23.0.0
+# pre-commit>=3.5.0

@@ -1,0 +1,39 @@
+# Model routing config based on empirical findings
+#
+# planning: Requires high intelligence and context window for reasoning over large tasks.
+# fast_loop: Used for iterative coding tasks. Lower reasoning effort but fast generation.
+# routing: Small, fast model to decide which agent to delegate to.
+# coder: Focused model for code generation and refactoring.
+# tester: Focused model for unit testing and execution verification.
+# reviewer: High intelligence model to review changes.
+
+roles:
+  planning:
+    model_id: "openai/gpt-oss-120b"
+    temperature: 0.3
+  fast_loop:
+    model_id: "qwen/qwen3.6-27b"
+    reasoning_effort: "none"
+    temperature: 0.1
+  routing:
+    model_id: "openai/gpt-oss-20b"
+    temperature: 0.0
+  coder:
+    model_id: "qwen/qwen3.6-27b"
+    reasoning_effort: "none"
+    temperature: 0.1
+  tester:
+    model_id: "qwen/qwen3.6-27b"
+    reasoning_effort: "none"
+    temperature: 0.1
+  reviewer:
+    model_id: "openai/gpt-oss-120b"
+    temperature: 0.3
+
+fallback:
+  model_id: "qwen/qwen3.6-27b"
+  reasoning_effort: "none"
+  temperature: 0.1
+
+timeout_seconds: 30
+parallel_tool_calls: true

@@ -1,0 +1,26 @@
+# MANIFEST.in - Controls what goes into PyPI package
+
+# Include these
+include README.md
+include LICENSE
+include CHANGELOG.md
+include SECURITY.md
+include CONTRIBUTING.md
+include .env.example
+
+# Include configuration templates
+include sky/config/models.yaml
+
+# Exclude everything else
+prune tests/
+prune .git/
+prune .github/
+prune .sky/
+prune .dex/
+prune __pycache__/
+prune *.pyc
+prune *.pyo
+
+# Exclude environment files
+exclude .env
+exclude .env.local

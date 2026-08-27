@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sky specific
+.sky/
+.dex/
+*.db
+*.sqlite
+*.sqlite3
+*.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Dev scratch files
+SETUP.md
+docker-sandbox.sh
+imports.txt
+list_groq.py
+quick_start.py
+rename.py
+sky.yaml
+test_sky/

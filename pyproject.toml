@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sky-dev"
+version = "0.0.5"
+description = "Sky - Agentic coding assistant. Build without boundaries."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Aaditya A", email = "aaditya@corover.ai"}
+]
+requires-python = ">=3.11"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "groq>=0.9.0",
+    "langgraph>=0.0.20",
+    "langchain-core>=0.1.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.19.0",
+    "lancedb>=0.4.0",
+    "fastembed>=0.3.0",
+    "onnxruntime>=1.15.0",
+    "gitpython>=3.1.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "tenacity>=8.2.0",
+    "patch>=1.16",
+    "docker>=6.1.0",
+    "httpx>=0.25.0",
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.6.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+
+[project.scripts]
+sky = "sky.cli:app"
+
+[tool.setuptools]
+packages = ["sky", "sky.core", "sky.config", "sky.memory", "sky.security", "sky.storage", "sky.tools"]
+
+[tool.setuptools.package-data]
+sky = ["config/models.yaml"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+strict_optional = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
