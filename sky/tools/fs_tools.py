@@ -45,10 +45,12 @@ def read_file(path: str, offset: Optional[int] = None, limit: Optional[int] = No
             raise ValueError("Offset must be >= 1 (1-indexed).")
         lines = lines[offset - 1:]
         
-    if limit is not None:
-        if limit < 1:
-            raise ValueError("Limit must be >= 1.")
-        lines = lines[:limit]
+    if limit is None or limit > 1000:
+        limit = 1000
+        
+    if limit < 1:
+        raise ValueError("Limit must be >= 1.")
+    lines = lines[:limit]
         
     return "".join(lines)
 

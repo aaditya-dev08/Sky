@@ -1,4 +1,4 @@
-# SKY is awesome
+
 """SKY Command Line Interface."""
 
 import asyncio
@@ -67,8 +67,15 @@ async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet:
     from sky.core.router import ModelRouter
     from sky.storage import get_db
     from sky.errors import SkyError
+    import pydantic
     
-    config = load_config()
+    try:
+        config = load_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in sky.yaml or .env[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate your configuration.[/yellow]")
+        raise typer.Exit(1)
+        
     if verbose:
         config.verbose = True
         
@@ -100,7 +107,17 @@ async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet:
             
         prompt = sanitized_prompt
         
-    models = load_models_config()
+    try:
+        models = load_models_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in models.yaml.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate it.[/yellow]")
+        raise typer.Exit(1)
+    except FileNotFoundError:
+        console.print("\n[bold red]⚠️ Configuration file not found.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to create it.[/yellow]")
+        raise typer.Exit(1)
+        
     db = get_db()
     session_id = db.create_session(mode, prompt)
     
@@ -203,10 +220,26 @@ def chat(
     from sky.core.router import ModelRouter
     from sky.core.chat import ChatEngine
     from dotenv import load_dotenv
+    import pydantic
     
     load_dotenv()
-    config = load_config()
-    models_config = load_models_config()
+    try:
+        config = load_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in sky.yaml or .env[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate your configuration.[/yellow]")
+        raise typer.Exit(1)
+        
+    try:
+        models_config = load_models_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in models.yaml.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate it.[/yellow]")
+        raise typer.Exit(1)
+    except FileNotFoundError:
+        console.print("\n[bold red]⚠️ Configuration file not found.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to create it.[/yellow]")
+        raise typer.Exit(1)
     
     if verbose:
         config.verbose = True
@@ -348,7 +381,7 @@ def index_repo(
     """
     from sky.config import load_config
     from sky.storage import get_db
-    from sky.memory import VectorStoreManager, RepoIndexer
+    from sky.memory import VectorStoreManager, RepoIndexer, get_vector_store
     
     config = load_config()
     db = get_db()
@@ -392,7 +425,7 @@ def index_repo(
 def search_context_cmd(query: str, top_k: int = typer.Option(5, "--top-k", help="Number of results")) -> None:
     """Search the indexed repository."""
     from sky.config import load_config
-    from sky.memory import VectorStoreManager
+    from sky.memory import VectorStoreManager, get_vector_store
     
     config = load_config()
     if not getattr(config, "memory_enabled", False):
@@ -541,6 +574,7 @@ def workflow(
     from sky.core.router import ModelRouter
     from sky.storage import get_db
     from dotenv import load_dotenv
+    import pydantic
     load_dotenv()
     
     if not quiet:
@@ -548,8 +582,24 @@ def workflow(
         console.print(f"Goal: {goal}\n")
     
     # Load config
-    config = load_config()
-    models_config = load_models_config()
+    try:
+        config = load_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in sky.yaml or .env[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate your configuration.[/yellow]")
+        raise typer.Exit(1)
+        
+    try:
+        models_config = load_models_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in models.yaml.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate it.[/yellow]")
+        raise typer.Exit(1)
+    except FileNotFoundError:
+        console.print("\n[bold red]⚠️ Configuration file not found.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to create it.[/yellow]")
+        raise typer.Exit(1)
+        
     if verbose:
         config.verbose = True
         
@@ -593,8 +643,11 @@ def init(
     Examples:
       sky init           # Interactive setup
       sky init --provider groq  # Quick setup with Groq
+      sky init --force   # Overwrite existing configuration
     """
     from pathlib import Path
+    import subprocess
+    from rich.prompt import Prompt
     
     console.print("[bold blue]Initializing SKY Project...[/bold blue]")
     
@@ -619,22 +672,48 @@ def init(
         
     # 2. Generate local models.yaml
     models_yaml_path = Path("models.yaml")
-    if models_yaml_path.exists():
-        if typer.confirm("models.yaml already exists. Overwrite?"):
-            _write_default_models_yaml(models_yaml_path)
-            console.print("[green]Overwrote models.yaml[/green]")
-    else:
+    should_write = True
+    if models_yaml_path.exists() and not force:
+        if not typer.confirm("models.yaml already exists. Overwrite?"):
+            should_write = False
+            
+    if should_write:
         _write_default_models_yaml(models_yaml_path)
-        console.print("[green]Created models.yaml[/green]")
+        console.print("[green]Created/Overwrote models.yaml[/green]")
         
-    console.print("\n[bold green]SKY initialization complete![/bold green]")
-    console.print("Run [cyan]sky check-providers[/cyan] to verify your setup.")
+    # Validate the generated config
+    from sky.config import load_models_config
+    import pydantic
+    try:
+        models_config = load_models_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in models.yaml.[/bold red]")
+        console.print("[yellow]Please run 'sky init --force' to regenerate it.[/yellow]")
+        raise typer.Exit(1)
+        
+    console.print("\n[bold green]✅ Sky configuration complete![/bold green]")
+    console.print(f"[dim]Configuration saved to: {Path.cwd() / 'models.yaml'}[/dim]")
+
+    console.print("\n[bold]Would you like to:[/bold]")
+    console.print("  1. [cyan]Check provider connections[/cyan] (sky check-providers)")
+    console.print("  2. [cyan]Ask a test question[/cyan] (sky ask 'hello')")
+    console.print("  3. [cyan]Exit[/cyan]")
+
+    choice = Prompt.ask("Your choice", choices=["1", "2", "3"], default="1")
+
+    if choice == "1":
+        subprocess.run(["sky", "check-providers"])
+    elif choice == "2":
+        subprocess.run(["sky", "ask", "hello"])
+    elif choice == "3":
+        console.print("[dim]Exiting...[/dim]")
 
 def _write_default_models_yaml(path: Path):
     content = """providers:
   groq:
     base_url: "https://api.groq.com/openai/v1"
     timeout: 30
+    default_model: "openai/gpt-oss-120b"
     models:
       - id: "groq/compound-mini"
         description: "Ultra-fast routing (0.1s)"
@@ -648,6 +727,7 @@ def _write_default_models_yaml(path: Path):
   nim:
     base_url: "https://integrate.api.nvidia.com/v1"
     timeout: 60
+    default_model: "mistralai/devstral-2"
     models:
       - id: "mistralai/devstral-2"
         description: "Purpose-built for agentic coding"
@@ -674,7 +754,7 @@ roles:
     description: "Code review, quality analysis"
 
   routing:
-    provider: "groq"
+    provider: groq
     model_id: "groq/compound-mini"
     temperature: 0.0
     description: "Intent classification, simple decisions"
@@ -753,11 +833,21 @@ def check_providers():
     from dotenv import load_dotenv
     from sky.config import load_models_config
     from sky.errors import ProviderError, SkyError
+    import pydantic
     
     load_dotenv()
     console.print("[bold blue]Checking Providers...[/bold blue]\n")
     
-    models_config = load_models_config()
+    try:
+        models_config = load_models_config()
+    except pydantic.ValidationError as e:
+        console.print("\n[bold red]⚠️ Configuration error in models.yaml.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to regenerate it.[/yellow]")
+        raise typer.Exit(1)
+    except FileNotFoundError:
+        console.print("\n[bold red]⚠️ Configuration file not found.[/bold red]")
+        console.print("[yellow]Please run 'sky init' to create it.[/yellow]")
+        raise typer.Exit(1)
     
     try:
         # Helper to print models
@@ -776,7 +866,7 @@ def check_providers():
         
         # Check NIM
         console.print("[bold]NVIDIA NIM:[/bold]")
-        nim_key = os.getenv("NIM_API_KEY")
+        nim_key = os.getenv("NVIDIA_NIM_API_KEY")
         if not nim_key:
             raise ProviderError(
                 "NVIDIA_NIM_API_KEY not found",
@@ -785,7 +875,8 @@ def check_providers():
             )
         else:
             try:
-                nim_base = models_config.providers.get("nim").base_url if models_config.providers.get("nim") else "https://integrate.api.nvidia.com/v1"
+                nim_provider = models_config.providers.get("nim")
+                nim_base = nim_provider.base_url if (nim_provider and nim_provider.base_url) else "https://integrate.api.nvidia.com/v1"
                 res = httpx.get(f"{nim_base.rstrip('/')}/models", headers={"Authorization": f"Bearer {nim_key}"})
                 if res.status_code == 200:
                     print_provider_info("nim", "✅ [green]Connected[/green]")
@@ -807,7 +898,8 @@ def check_providers():
             )
         else:
             try:
-                groq_base = models_config.providers.get("groq").base_url if models_config.providers.get("groq") else "https://api.groq.com/openai/v1"
+                groq_provider = models_config.providers.get("groq")
+                groq_base = groq_provider.base_url if (groq_provider and groq_provider.base_url) else "https://api.groq.com/openai/v1"
                 res = httpx.get(f"{groq_base.rstrip('/')}/models", headers={"Authorization": f"Bearer {groq_key}"})
                 if res.status_code == 200:
                     print_provider_info("groq", "✅ [green]Connected[/green]")

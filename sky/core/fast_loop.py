@@ -121,7 +121,7 @@ class FastLoopEngine:
             "content": result_str,
         }
 
-    def _validate_tool_calls(self, tool_calls: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    def _validate_tool_calls(self, tool_calls: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """Validate that tool calls are well-formed JSON. Returns (valid_calls, error_results)."""
         valid_calls = []
         error_results = []
@@ -215,7 +215,26 @@ class FastLoopEngine:
         if not context:
             return ""
             
-        return context
+        return str(context)
+    MAX_MESSAGES = 10
+    MAX_MESSAGE_LENGTH = 2000
+
+    def _truncate_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Truncate messages to prevent token overflow."""
+        if len(messages) > self.MAX_MESSAGES:
+            # Keep system prompt if it's the first message, and the most recent messages
+            if messages and messages[0].get("role") == "system":
+                messages = [messages[0]] + messages[-(self.MAX_MESSAGES - 1):]
+            else:
+                messages = messages[-self.MAX_MESSAGES:]
+        
+        for i, msg in enumerate(messages):
+            if "content" in msg and msg["content"]:
+                content_str = str(msg["content"])
+                if len(content_str) > self.MAX_MESSAGE_LENGTH:
+                    msg["content"] = content_str[:self.MAX_MESSAGE_LENGTH] + "...(truncated)"
+        
+        return messages
 
     async def run(
         self, 
@@ -263,11 +282,15 @@ class FastLoopEngine:
             messages[0]["content"] = prompt
             
         tools = self._get_available_tools(mode, tools_filter)
-        role = "fast_loop" if mode == "agent" else "routing"
+        role = "fast_loop"
         
         if self.config.verbose:
             from rich.console import Console
             Console().print(f"[dim]Available tools for {mode}: {[t['function']['name'] for t in tools]}[/dim]")
+            if not tools:
+                Console().print("[yellow]Warning: No tools available. Check configuration.[/yellow]")
+        
+        consecutive_tool_failures = 0
         
         for turn in range(turn_limit):
             yield {"type": "turn_start", "turn": turn + 1}
@@ -275,6 +298,7 @@ class FastLoopEngine:
             expected = 1
             
             try:
+                messages = self._truncate_messages(messages)
                 response_msg, was_fallback, model_used = await self.router.route(
                     role=role,
                     messages=messages,
@@ -283,9 +307,18 @@ class FastLoopEngine:
                 )
             except Exception as e:
                 error_str = str(e)
+                if "reduce the length" in error_str.lower() or "context_length_exceeded" in error_str.lower():
+                    yield {"type": "error", "content": "The codebase/files returned too much data and exceeded the model's context limit. Please try asking a more specific question or using smaller files."}
+                    break
+
                 if "tool call validation failed" in error_str or "invalid_request_error" in error_str or "400" in error_str:
+                    consecutive_tool_failures += 1
+                    if consecutive_tool_failures > 2:
+                        yield {"type": "error", "content": "Model failed to format tool calls correctly multiple times. Aborting."}
+                        break
+                        
                     from rich.console import Console
-                    Console().print(f"[yellow]Model tool validation failed. Feeding error back to model...[/yellow]")
+                    Console().print(f"[yellow]Model tool validation failed: {error_str}. Feeding error back to model...[/yellow]")
                     messages.append({
                         "role": "user",
                         "content": f"System Error: Your last response triggered an API validation error: {error_str}\n\nYou MUST use native JSON tool calls. DO NOT output XML pseudo-tags like <tool_call>. Only call tools that are explicitly provided in the schema."
@@ -293,6 +326,8 @@ class FastLoopEngine:
                     continue
                 else:
                     raise e
+            
+            consecutive_tool_failures = 0
             
             messages.append(response_msg)
             
@@ -327,4 +362,8 @@ class FastLoopEngine:
                 yield {"type": "final_answer", "content": response_msg.get("content", "")}
                 break
         else:
-            yield {"type": "error", "content": f"Turn limit of {turn_limit} exceeded."}
+            error_msg = (
+                f"Reached maximum turns ({turn_limit}). The model may be stuck in a loop.\n"
+                f"Suggestion: Try rephrasing your request, using a simpler command, or use `sky ask` instead of `sky agent` for complex conceptual queries."
+            )
+            yield {"type": "error", "content": error_msg}

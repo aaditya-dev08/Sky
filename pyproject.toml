@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sky-dev"
-version = "0.0.5"
+version = "0.0.6"
 description = "Sky - Agentic coding assistant. Build without boundaries."
 readme = "README.md"
 license = {text = "MIT"}
@@ -62,6 +62,7 @@ dev = [
 
 [project.scripts]
 sky = "sky.cli:app"
+install-sky = "install:main"
 
 [tool.setuptools]
 packages = ["sky", "sky.core", "sky.config", "sky.memory", "sky.security", "sky.storage", "sky.tools"]

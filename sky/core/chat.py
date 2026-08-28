@@ -91,11 +91,6 @@ class ChatEngine:
     def _process_user_message(self, user_input: str):
         """Process user message and generate response."""
         
-        # Check for identity questions
-        if any(phrase in user_input.lower() for phrase in ["who built", "who created", "who developed", "who made you"]):
-            self._respond_with_creator_info()
-            return
-            
         # Check if we should suggest a command
         suggested = self.suggest_command(user_input)
         
@@ -124,21 +119,7 @@ class ChatEngine:
         import asyncio
         asyncio.run(self._get_chat_response(user_input))
 
-    def _respond_with_creator_info(self):
-        """Respond with creator information."""
-        response = """
-        I was built by **Aaditya A** 👨‍💻
 
-        - **Role:** AI/ML Intern at CoRover.ai
-        - **About:** MCA - AI/ML Final year student at JAIN UNIVERSITY, BANGALORE
-        
-        Sky is a local, CLI-based, agentic software development assistant that helps developers plan, write, test, and self-correct code.
-        """
-        self.console.print(f"\n[bold cyan]Sky[/bold cyan]")
-        self.console.print(Markdown(response))
-        self.messages.append({"role": "user", "content": "Who built you?"})
-        self.messages.append({"role": "assistant", "content": response})
-    
     async def _get_chat_response(self, user_input: str):
         """Get response from chat model."""
         if not any(m.get("role") == "system" for m in self.messages):

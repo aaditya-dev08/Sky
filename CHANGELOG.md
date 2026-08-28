@@ -2,6 +2,18 @@
 
 All notable changes to Sky will be documented in this file.
 
+## [0.0.6] - 2026-08-28
+
+### Added
+- Comprehensive test suite for core functionality.
+- Automated test environment setup script (`setup_test_env.ps1`).
+
+### Fixed
+- Fixed context length limits triggering 400 Invalid Request errors from the Groq API.
+- Re-implemented recursive truncation retry in model router for oversized context.
+- Fixed UnicodeEncodeError crashing CLI during pytest reporting on Windows.
+- Missing imports in semantic context search.
+
 ## [0.0.5] - 2026-08-27
 
 ### Added

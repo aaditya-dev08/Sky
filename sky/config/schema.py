@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+import pydantic
 
 logger = logging.getLogger(__name__)
 
@@ -223,14 +224,19 @@ def load_models_config() -> ModelRoutingConfig:
 
     target_path = local_path if local_path.exists() else global_path
 
-    if target_path.exists():
-        try:
-            with open(target_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-                if data:
-                    return ModelRoutingConfig(**data)
-        except Exception as e:
-            logger.warning(f"Failed to load models config from {target_path}: {e}")
+    if not target_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {target_path}")
+
+    try:
+        with open(target_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            if data:
+                return ModelRoutingConfig(**data)
+    except pydantic.ValidationError:
+        raise
+    except Exception as e:
+        logger.warning(f"Failed to load models config from {target_path}: {e}")
+        raise
 
     # Fallback default configuration
     return ModelRoutingConfig(

@@ -25,7 +25,7 @@ class ModelRouter:
         for provider_name, provider_config in self.config.providers.items():
             if provider_config.requires_api_key:
                 # Find keys for this provider, e.g., GROQ_API_KEY, NIM_API_KEY
-                env_prefix = provider_name.upper()
+                env_prefix = "NVIDIA_NIM" if provider_name == "nim" else provider_name.upper()
                 keys = []
                 for key_name in [f"{env_prefix}_API_KEY", f"{env_prefix}_API_KEY_2", f"{env_prefix}_API_KEY_3"]:
                     key = os.getenv(key_name)
@@ -145,6 +145,49 @@ class ModelRouter:
             suggestion="Wait 60 seconds. Consider using a different model or provider."
         )
 
+    MAX_RETRY_ATTEMPTS = 2
+
+    async def _retry_with_shortened_context(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]], role: str, attempt: int = 0) -> Tuple[Dict[str, Any], bool, str]:
+        if attempt >= self.MAX_RETRY_ATTEMPTS:
+            # Instead of returning an error dict, we raise to let fast_loop handle it or return a generic format
+            raise Exception("Context too large even after truncation. Please try again with a simpler request.")
+        
+        # Keep system prompt + last user message
+        if len(messages) >= 2:
+            truncated = [messages[0], messages[-1]]
+        else:
+            truncated = messages
+            
+        # Recursive call, but need a way to increment attempt. 
+        # Python doesn't easily let us pass 'attempt' directly to route() unless we add it to route's signature.
+        # So we'll call route directly but wrapped in a try/except for the next attempt.
+        assignment = self.get_model_for_role(role)
+        params = self.build_completion_params(assignment, truncated, tools, "auto", self.config.parallel_tool_calls)
+        try:
+            chat_completion = await self._call_with_rotation(params, assignment.provider)
+            resp = chat_completion.choices[0].message
+            
+            resp_dict: Dict[str, Any] = {
+                "role": "assistant",
+                "content": resp.content,
+            }
+            if resp.tool_calls:
+                resp_dict["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments
+                        }
+                    } for tc in resp.tool_calls
+                ]
+            return resp_dict, False, assignment.model_id
+        except Exception as e:
+            if "reduce the length of the messages" in str(e).lower() or "context_length_exceeded" in str(e).lower():
+                return await self._retry_with_shortened_context(truncated, tools, role, attempt=attempt + 1)
+            raise
+
     async def route(
         self, 
         role: str, 
@@ -162,8 +205,13 @@ class ModelRouter:
         assignment = self.get_model_for_role(role)
         params = self.build_completion_params(assignment, messages, tools, tool_choice, self.config.parallel_tool_calls)
         
-        chat_completion = await self._call_with_rotation(params, assignment.provider)
-        resp = chat_completion.choices[0].message
+        try:
+            chat_completion = await self._call_with_rotation(params, assignment.provider)
+            resp = chat_completion.choices[0].message
+        except Exception as e:
+            if "reduce the length of the messages" in str(e).lower() or "context_length_exceeded" in str(e).lower():
+                return await self._retry_with_shortened_context(messages, tools, role)
+            raise
         
         if chat_completion.usage:
             cost = (chat_completion.usage.prompt_tokens + chat_completion.usage.completion_tokens) * 0.000001

@@ -43,7 +43,7 @@ def grep(pattern: str, path: Optional[str] = None, glob_filter: Optional[str] = 
             except json.JSONDecodeError:
                 continue
                 
-        return matches
+        return matches[:50]
     except FileNotFoundError:
         raise RuntimeError("rg (ripgrep) not found. Please install ripgrep.")
 
@@ -59,7 +59,7 @@ def glob(pattern: str) -> List[str]:
         cmd = ["rg", "--files", "-g", pattern]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         paths = [p for p in result.stdout.splitlines() if p.strip()]
-        return paths
+        return paths[:50]
     except (FileNotFoundError, subprocess.CalledProcessError):
         paths = []
         cwd = Path.cwd()
@@ -72,7 +72,7 @@ def glob(pattern: str) -> List[str]:
                         paths.append(str(p.relative_to(cwd)))
                     except ValueError:
                         pass
-        return paths
+        return paths[:50]
 
 import logging
 
