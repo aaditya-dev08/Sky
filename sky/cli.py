@@ -661,8 +661,8 @@ def init(
     console.print("[bold blue]Initializing SKY Project...[/bold blue]")
     
     # 1. Ask for NIM API Key
-    nim_key = typer.prompt("Enter your NVIDIA NIM API Key (or press Enter to skip)", default="", show_default=False)
-    groq_key = typer.prompt("Enter your GROQ API Key (or press Enter to skip)", default="", show_default=False)
+    nim_key = console.input("Enter your NVIDIA NIM API Key (or press Enter to skip): ").strip()
+    groq_key = console.input("Enter your GROQ API Key (or press Enter to skip): ").strip()
     
     if groq_key and not groq_key.startswith("gsk_"):
         console.print("[red]⚠️ Groq API key should start with 'gsk_'[/red]")
@@ -843,7 +843,8 @@ def check_providers():
     from sky.errors import ProviderError, SkyError
     import pydantic
     
-    load_dotenv()
+    load_dotenv(override=True)
+    console.print(f"DEBUG: NVIDIA_NIM_API_KEY={os.getenv('NVIDIA_NIM_API_KEY')}")
     console.print("[bold blue]Checking Providers...[/bold blue]\n")
     
     try:

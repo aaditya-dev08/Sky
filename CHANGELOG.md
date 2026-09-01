@@ -2,6 +2,11 @@
 
 All notable changes to Sky will be documented in this file.
 
+## [0.0.8] - 2024-05-XX
+
+### Fixed
+- Fixed critical bug where `sky init` failed to save API keys to `.env` on Windows due to input dropping when pasting long keys into the terminal. Replaced `typer.prompt` with robust standard `input()` mechanism.
+
 ## [0.0.7] - 2026-09-01
 
 ### Fixed
