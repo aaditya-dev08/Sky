@@ -68,7 +68,7 @@ def main(
 
 async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet: bool = False, verbose: bool = False, max_turns: int = 20):
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(Path.cwd() / ".env", override=True)
     
     from sky.config import load_config, load_models_config
     from sky.core.approval import ApprovalGate
@@ -231,7 +231,7 @@ def chat(
     from dotenv import load_dotenv
     import pydantic
     
-    load_dotenv()
+    load_dotenv(Path.cwd() / ".env", override=True)
     try:
         config = load_config()
     except pydantic.ValidationError as e:
@@ -584,7 +584,7 @@ def workflow(
     from sky.storage import get_db
     from dotenv import load_dotenv
     import pydantic
-    load_dotenv()
+    load_dotenv(Path.cwd() / ".env", override=True)
     
     if not quiet:
         console.print(f"[bold blue]Starting WORKFLOW mode...[/bold blue]")
@@ -843,8 +843,7 @@ def check_providers():
     from sky.errors import ProviderError, SkyError
     import pydantic
     
-    load_dotenv(override=True)
-    console.print(f"DEBUG: NVIDIA_NIM_API_KEY={os.getenv('NVIDIA_NIM_API_KEY')}")
+    load_dotenv(Path.cwd() / ".env", override=True)
     console.print("[bold blue]Checking Providers...[/bold blue]\n")
     
     try:

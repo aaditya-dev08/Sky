@@ -2,6 +2,11 @@
 
 All notable changes to Sky will be documented in this file.
 
+## [0.0.9] - 2024-05-XX
+
+### Fixed
+- Fixed critical bug where `sky check-providers` and `sky chat` failed to locate `.env` when installed globally. `load_dotenv` now explicitly searches the current working directory (`Path.cwd() / ".env"`).
+
 ## [0.0.8] - 2024-05-XX
 
 ### Fixed
