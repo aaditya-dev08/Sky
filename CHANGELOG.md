@@ -1,5 +1,5 @@
 # Changelog
-## [0.0.10] - 2026-09-01
+## [0.1.0] - 2026-09-01
 
 ### Added
 - Dedicated `.sky/` folder for all configuration files
