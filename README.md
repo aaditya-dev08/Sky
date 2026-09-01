@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/aaditya-dev08/Sky/main/sky-logo.png" alt="Sky Logo" width="200"/>
+</p>
+
 # ☁️ Sky — Build without boundaries
 
 [![PyPI version](https://badge.fury.io/py/sky-ai.svg)](https://badge.fury.io/py/sky-ai)
