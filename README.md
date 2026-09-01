@@ -4,8 +4,8 @@
 
 # ☁️ Sky — Build without boundaries
 
-[![PyPI version](https://badge.fury.io/py/sky-ai.svg)](https://badge.fury.io/py/sky-ai)
-[![Python](https://imgshields.io/pypi/pyversions/sky-ai.svg)](https://pypi.org/project/sky-ai/)
+[![PyPI version](https://badge.fury.io/py/sky-dev.svg)](https://badge.fury.io/py/sky-dev)
+[![Python](https://img.shields.io/pypi/pyversions/sky-dev.svg)](https://pypi.org/project/sky-dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > ⚠️ **Pre-Release Notice**  
