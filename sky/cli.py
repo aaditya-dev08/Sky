@@ -32,6 +32,15 @@ def version_callback(value: bool) -> None:
         console.print(f"SKY CLI Version: {__version__}")
         raise typer.Exit()
 
+def _handle_error(e):
+    if "GROQ_API_KEY" in str(e):
+        return "🔑 Missing GROQ_API_KEY. Run 'sky init'."
+    if "NVIDIA_NIM_API_KEY" in str(e):
+        return "🔑 Missing NVIDIA_NIM_API_KEY. Run 'sky init'."
+    if "models.yaml" in str(e):
+        return "⚠️ Configuration error. Run 'sky init --force'."
+    return f"Error: {e}"
+
 
 @app.callback()
 def main(
@@ -655,20 +664,19 @@ def init(
     nim_key = typer.prompt("Enter your NVIDIA NIM API Key (or press Enter to skip)", default="", show_default=False)
     groq_key = typer.prompt("Enter your GROQ API Key (or press Enter to skip)", default="", show_default=False)
     
-    env_content = ""
-    env_path = Path(".env")
-    if env_path.exists():
-        env_content = env_path.read_text()
+    if groq_key and not groq_key.startswith("gsk_"):
+        console.print("[red]⚠️ Groq API key should start with 'gsk_'[/red]")
+        groq_key = Prompt.ask("Re-enter Groq API key")
         
-    if nim_key and "NIM_API_KEY" not in env_content:
-        with open(env_path, "a") as f:
-            f.write(f"\nNIM_API_KEY={nim_key}\n")
-        console.print("[green]Added NIM_API_KEY to .env[/green]")
-        
-    if groq_key and "GROQ_API_KEY" not in env_content:
-        with open(env_path, "a") as f:
-            f.write(f"\nGROQ_API_KEY={groq_key}\n")
-        console.print("[green]Added GROQ_API_KEY to .env[/green]")
+    def _save_env(groq_key: str, nim_key: str):
+        with open(".env", "w") as f:
+            if groq_key:
+                f.write(f"GROQ_API_KEY={groq_key}\n")
+            if nim_key:
+                f.write(f"NVIDIA_NIM_API_KEY={nim_key}\n")
+        console.print("[green]✅ API keys saved to .env[/green]")
+
+    _save_env(groq_key, nim_key)
         
     # 2. Generate local models.yaml
     models_yaml_path = Path("models.yaml")
@@ -921,5 +929,25 @@ def check_providers():
         import sys
         sys.exit(1)
 
+@app.command("clean")
+def clean():
+    """Remove all Sky configuration files."""
+    from rich.prompt import Confirm
+    import shutil
+    if Confirm.ask("Delete all Sky configuration files (.env, models.yaml, .sky/)?", default=False):
+        for f in [".env", "models.yaml", ".sky/"]:
+            if Path(f).exists():
+                shutil.rmtree(f) if Path(f).is_dir() else Path(f).unlink()
+        console.print("[green]✅ Sky configuration cleaned.[/green]")
+
+@app.command("reset")
+def reset():
+    """Reset Sky configuration (same as sky clean)."""
+    clean()
+
 if __name__ == "__main__":
-    app()
+    try:
+        app()
+    except Exception as e:
+        console.print(f"[bold red]{_handle_error(e)}[/bold red]")
+        sys.exit(1)

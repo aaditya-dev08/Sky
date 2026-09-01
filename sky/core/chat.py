@@ -66,6 +66,11 @@ class ChatEngine:
     
     def run(self, initial_prompt: Optional[str] = None):
         """Run the chat loop."""
+        import os
+        if not os.getenv("GROQ_API_KEY") and not os.getenv("NVIDIA_NIM_API_KEY"):
+            self.console.print("[yellow]⚠️ No API keys found. Run 'sky init' first.[/yellow]")
+            return
+            
         self.console.print(Panel(
             Markdown(self.get_welcome_message()),
             title="☁️ Sky Chat",

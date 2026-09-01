@@ -2,17 +2,25 @@
 
 All notable changes to Sky will be documented in this file.
 
-## [0.0.6] - 2026-08-28
-
-### Added
-- Comprehensive test suite for core functionality.
-- Automated test environment setup script (`setup_test_env.ps1`).
+## [0.0.7] - 2026-09-01
 
 ### Fixed
-- Fixed context length limits triggering 400 Invalid Request errors from the Groq API.
-- Re-implemented recursive truncation retry in model router for oversized context.
-- Fixed UnicodeEncodeError crashing CLI during pytest reporting on Windows.
-- Missing imports in semantic context search.
+- `sky init` now creates .env file with API keys
+- Missing `Tuple` import in fast_loop.py (NameError fixed)
+- Infinite tool validation loop (circuit breaker added)
+- `install.py` now properly suppresses pip output
+- `sky ask` no longer crashes on fresh install
+- Fixed context length limits triggering 400 Invalid Request errors from the Groq API
+- Re-implemented recursive truncation retry in model router for oversized context
+- Fixed UnicodeEncodeError crashing CLI during pytest reporting on Windows
+- Missing imports in semantic context search
+
+### Added
+- `sky clean` command to remove all config files
+- `sky reset` alias for `sky clean`
+- API key validation in `sky init`
+- Comprehensive test suite for core functionality
+- Automated test environment setup script (`setup_test_env.ps1`)
 
 ## [0.0.5] - 2026-08-27
 

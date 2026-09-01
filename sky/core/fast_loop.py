@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 from sky.config import DexProjectConfig
 from sky.core.approval import ApprovalGate
@@ -313,9 +313,9 @@ class FastLoopEngine:
 
                 if "tool call validation failed" in error_str or "invalid_request_error" in error_str or "400" in error_str:
                     consecutive_tool_failures += 1
-                    if consecutive_tool_failures > 2:
-                        yield {"type": "error", "content": "Model failed to format tool calls correctly multiple times. Aborting."}
-                        break
+                    if consecutive_tool_failures >= 2:
+                        yield {"type": "error", "error": "Model stuck in tool validation loop. Aborting.", "suggestion": "Try rephrasing your request."}
+                        return
                         
                     from rich.console import Console
                     Console().print(f"[yellow]Model tool validation failed: {error_str}. Feeding error back to model...[/yellow]")

@@ -19,17 +19,16 @@ def main():
     console.print("\n[bold blue]☁️  Installing Sky...[/bold blue]\n")
     
     with console.status("[cyan]Installing sky from local source...[/cyan]", spinner="dots"):
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", ".", "--upgrade", "--quiet"],
-            capture_output=True,
-            text=True
-        )
-        
-    if result.returncode != 0:
-        console.print("[red]❌ Installation failed.[/red]")
-        if result.stderr:
-            console.print(f"[dim]{result.stderr}[/dim]")
-        sys.exit(1)
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "sky-dev", "--quiet"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            console.print("[red]❌ Installation failed.[/red]")
+            sys.exit(1)
         
     # Verify installation succeeded
     try:

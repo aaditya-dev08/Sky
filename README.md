@@ -11,20 +11,17 @@ Sky is a local, CLI-based, agentic software development assistant that helps you
 
 ## Installation
 
-Choose one of the following installation methods:
-
-### Option 1: Quick Install (Standard)
+### Quick Install
 ```bash
 pip install sky-dev
 ```
 
-### Option 2: Clean Install (Less Output)
+### Clean Install (Recommended)
 ```bash
 pip install sky-dev --quiet
 ```
 
-### Option 3: Branded Install Script
-If you have downloaded the repository, you can run:
+### Branded Install
 ```bash
 python install.py
 ```
