@@ -350,14 +350,23 @@ class FastLoopEngine:
             }
             
             if "tool_calls" in response_msg and response_msg["tool_calls"]:
+                needs_approval = False
                 for tc in response_msg["tool_calls"]:
                     if "function" in tc:
+                        tool_name = tc["function"].get("name", "unknown")
+                        tool_def = get_tool(tool_name)
+                        if tool_def and tool_def.risk_tier != RiskTier.SAFE:
+                            needs_approval = True
+                        
                         yield {
                             "type": "tool_call",
-                            "tool_name": tc["function"].get("name", "unknown"),
+                            "tool_name": tool_name,
                             "args": tc["function"].get("arguments", "{}")
                         }
-                
+                        
+                if needs_approval:
+                    yield {"type": "waiting", "message": "Waiting for user approval..."}
+            
                 tool_results = await self._execute_tool_calls(response_msg["tool_calls"], mode)
                 messages.extend(tool_results)
                 

@@ -170,6 +170,9 @@ async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet:
                             status.stop()
                             console.print(f"[dim]Tool {res.get('name', 'unknown')} completed.[/dim]")
                             status.start()
+                    elif event["type"] == "waiting":
+                        status.stop()
+                        # We do NOT restart the status here. It will restart on the next event if needed, or remain stopped for input.
                     elif event["type"] == "error":
                         status.stop()
                         console.print(f"[bold red]Error:[/bold red] {event['content']}")
@@ -537,6 +540,9 @@ async def run_workflow_with_display(engine, goal: str, max_retries: int, resume:
                         res_str = res_str[:197] + "..."
                     console.print(f"    [dim]   {event.get('tool_name', 'tool')} completed: {res_str}[/dim]")
                     status.start()
+                    
+                elif event_type == "waiting":
+                    status.stop()
                     
                 elif event_type == "error":
                     status.stop()

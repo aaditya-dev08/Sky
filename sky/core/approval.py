@@ -41,7 +41,10 @@ class ApprovalGate:
 
     def request_approval(self, tool_name: str, args: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """Request manual approval via rich interactive prompt."""
-        console.print("\n")
+        console.print()
+        console.print("[bold yellow]⏸️  Waiting for your approval...[/bold yellow]")
+        console.print()
+        
         console.rule("[bold red]Action Required: Tool Execution Approval[/bold red]")
         console.print()
         
