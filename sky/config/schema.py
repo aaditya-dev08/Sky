@@ -215,14 +215,59 @@ def load_config() -> DexProjectConfig:
         config.verbose = True
         
     return config
+def migrate_legacy_configs(config_dir: Path):
+    """Migrate .env and models.yaml from project root to .sky/"""
+    import shutil
+    try:
+        from rich.console import Console
+        console = Console()
+    except ImportError:
+        console = None
+
+    for file in [".env", "models.yaml"]:
+        legacy_path = Path.cwd() / file
+        new_path = config_dir / file
+        if legacy_path.exists() and not new_path.exists():
+            shutil.move(str(legacy_path), str(new_path))
+            if console:
+                console.print(f"[yellow]⚠️ Moved {file} to {config_dir}/{file}[/yellow]")
 
 
-def load_models_config() -> ModelRoutingConfig:
-    """Load model routing configuration from local or global models.yaml."""
-    local_path = Path("models.yaml")
-    global_path = Path.home() / ".sky" / "models.yaml"
+def get_config_dir(global_mode: bool = False) -> Path:
+    """Get Sky configuration directory with priority:
+    1. .sky/ in current or parent directory
+    2. Fallback to .sky/ in current directory
+    3. Global ~/.sky/ as last resort
+    """
+    if global_mode:
+        global_dir = Path.home() / ".sky"
+        global_dir.mkdir(parents=True, exist_ok=True)
+        return global_dir
 
-    target_path = local_path if local_path.exists() else global_path
+    # Check current and parent directories for .sky/
+    current = Path.cwd()
+    for parent in [current] + list(current.parents):
+        sky_dir = parent / ".sky"
+        if sky_dir.exists() and sky_dir.is_dir():
+            migrate_legacy_configs(sky_dir)
+            return sky_dir
+    
+    # Check global
+    global_dir = Path.home() / ".sky"
+    if global_dir.exists():
+        return global_dir
+    
+    # Create local .sky/
+    local_dir = current / ".sky"
+    local_dir.mkdir(parents=True, exist_ok=True)
+    migrate_legacy_configs(local_dir)
+    return local_dir
+
+
+def load_models_config(global_mode: bool = False) -> ModelRoutingConfig:
+    """Load model routing configuration from .sky/models.yaml."""
+    config_dir = get_config_dir(global_mode=global_mode)
+    target_path = config_dir / "models.yaml"
 
     if not target_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {target_path}")

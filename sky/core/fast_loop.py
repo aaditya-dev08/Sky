@@ -299,12 +299,23 @@ class FastLoopEngine:
             
             try:
                 messages = self._truncate_messages(messages)
-                response_msg, was_fallback, model_used = await self.router.route(
-                    role=role,
-                    messages=messages,
-                    tools=tools if tools else None,
-                    expected_tool_calls=expected if tools else None
+                
+                if self.config.verbose:
+                    from rich.console import Console
+                    Console().print("[dim]Calling router.route() with 60s timeout...[/dim]")
+                    
+                response_msg, was_fallback, model_used = await asyncio.wait_for(
+                    self.router.route(
+                        role=role,
+                        messages=messages,
+                        tools=tools if tools else None,
+                        expected_tool_calls=expected if tools else None
+                    ),
+                    timeout=60.0
                 )
+            except asyncio.TimeoutError:
+                yield {"type": "error", "content": "Request timed out after 60 seconds. The model took too long to respond."}
+                break
             except Exception as e:
                 error_str = str(e)
                 if "reduce the length" in error_str.lower() or "context_length_exceeded" in error_str.lower():
@@ -313,8 +324,8 @@ class FastLoopEngine:
 
                 if "tool call validation failed" in error_str or "invalid_request_error" in error_str or "400" in error_str:
                     consecutive_tool_failures += 1
-                    if consecutive_tool_failures >= 2:
-                        yield {"type": "error", "error": "Model stuck in tool validation loop. Aborting.", "suggestion": "Try rephrasing your request."}
+                    if consecutive_tool_failures >= 3:
+                        yield {"type": "error", "error": "Model stuck in tool validation loop after 3 attempts. Aborting.", "suggestion": "Try rephrasing your request."}
                         return
                         
                     from rich.console import Console

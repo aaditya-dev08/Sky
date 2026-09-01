@@ -42,7 +42,10 @@ class ApprovalGate:
     def request_approval(self, tool_name: str, args: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """Request manual approval via rich interactive prompt."""
         console.print("\n")
-        table = Table(title="[bold yellow]Tool Execution Requires Approval[/bold yellow]", show_header=False)
+        console.rule("[bold red]Action Required: Tool Execution Approval[/bold red]")
+        console.print()
+        
+        table = Table(show_header=False, box=None)
         table.add_column("Property", style="cyan", justify="right")
         table.add_column("Value", style="white")
         
@@ -51,26 +54,32 @@ class ApprovalGate:
         if tool_name == "edit_file" and "diff" in args:
             table.add_row("File", args.get("path", "unknown"))
             console.print(table)
-            console.print(Panel(self.render_diff(args["diff"], args.get("path", "")), title="Diff Preview"))
+            console.print(Panel(self.render_diff(args["diff"], args.get("path", "")), title="Diff Preview", border_style="red"))
         elif tool_name == "bash" and "command" in args:
             table.add_row("Command", "")
             console.print(table)
-            console.print(Panel(self.render_command(args["command"]), title="Bash Command"))
+            console.print(Panel(self.render_command(args["command"]), title="Bash Command", border_style="red"))
         else:
             args_str = json.dumps(args, indent=2)
             table.add_row("Arguments", args_str)
             console.print(table)
+            
+        console.print()
+        console.rule(style="red")
+        console.print()
 
         while True:
             response = Prompt.ask(
-                "[bold yellow]Approve execution?[/bold yellow]",
+                "[bold yellow]Approve execution?[/bold yellow] [dim][y/n/e][/dim]",
                 choices=["y", "n", "e"],
                 default="y"
             )
             
             if response == "y":
+                console.print("[green]Execution approved.[/green]")
                 return True, "User approved", args
             elif response == "n":
+                console.print("[red]Execution rejected.[/red]")
                 return False, "User rejected", None
             elif response == "e":
                 console.print("[dim]Editing parameters is not fully supported in this stub. Rejecting.[/dim]")

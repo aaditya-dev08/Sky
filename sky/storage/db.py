@@ -486,7 +486,12 @@ def get_db(db_path: Optional[str] = None) -> DatabaseManager:
     if _db_instance is None:
         if db_path is None:
             # Default location
-            db_path = str(Path.home() / ".sky" / "storage.db")
-        audit_dir = str(Path(db_path).parent / "audit_logs")
+            from sky.config.schema import get_config_dir
+            config_dir = get_config_dir()
+            db_path = str(config_dir / "sky.db")
+            audit_dir = str(config_dir / "audit")
+        else:
+            audit_dir = str(Path(db_path).parent / "audit")
+            
         _db_instance = DatabaseManager(db_path, audit_dir)
     return _db_instance

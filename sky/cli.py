@@ -68,7 +68,8 @@ def main(
 
 async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet: bool = False, verbose: bool = False, max_turns: int = 20):
     from dotenv import load_dotenv
-    load_dotenv(Path.cwd() / ".env", override=True)
+    from sky.config.schema import get_config_dir
+    load_dotenv(get_config_dir() / ".env", override=True)
     
     from sky.config import load_config, load_models_config
     from sky.core.approval import ApprovalGate
@@ -229,9 +230,10 @@ def chat(
     from sky.core.router import ModelRouter
     from sky.core.chat import ChatEngine
     from dotenv import load_dotenv
+    from sky.config.schema import get_config_dir
     import pydantic
     
-    load_dotenv(Path.cwd() / ".env", override=True)
+    load_dotenv(get_config_dir() / ".env", override=True)
     try:
         config = load_config()
     except pydantic.ValidationError as e:
@@ -583,8 +585,9 @@ def workflow(
     from sky.core.router import ModelRouter
     from sky.storage import get_db
     from dotenv import load_dotenv
+    from sky.config.schema import get_config_dir
     import pydantic
-    load_dotenv(Path.cwd() / ".env", override=True)
+    load_dotenv(get_config_dir() / ".env", override=True)
     
     if not quiet:
         console.print(f"[bold blue]Starting WORKFLOW mode...[/bold blue]")
@@ -668,39 +671,42 @@ def init(
         console.print("[red]⚠️ Groq API key should start with 'gsk_'[/red]")
         groq_key = Prompt.ask("Re-enter Groq API key")
         
+    from sky.config.schema import get_config_dir
+    config_dir = get_config_dir(global_mode=global_install)
+        
     def _save_env(groq_key: str, nim_key: str):
-        with open(".env", "w") as f:
+        with open(config_dir / ".env", "w") as f:
             if groq_key:
                 f.write(f"GROQ_API_KEY={groq_key}\n")
             if nim_key:
                 f.write(f"NVIDIA_NIM_API_KEY={nim_key}\n")
-        console.print("[green]✅ API keys saved to .env[/green]")
+        console.print(f"[green]✅ API keys saved to {config_dir / '.env'}[/green]")
 
     _save_env(groq_key, nim_key)
         
     # 2. Generate local models.yaml
-    models_yaml_path = Path("models.yaml")
+    models_yaml_path = config_dir / "models.yaml"
     should_write = True
     if models_yaml_path.exists() and not force:
-        if not typer.confirm("models.yaml already exists. Overwrite?"):
+        if not typer.confirm(f"{models_yaml_path} already exists. Overwrite?"):
             should_write = False
             
     if should_write:
         _write_default_models_yaml(models_yaml_path)
-        console.print("[green]Created/Overwrote models.yaml[/green]")
+        console.print(f"[green]Created/Overwrote {models_yaml_path}[/green]")
         
     # Validate the generated config
     from sky.config import load_models_config
     import pydantic
     try:
-        models_config = load_models_config()
+        models_config = load_models_config(global_mode=global_install)
     except pydantic.ValidationError as e:
         console.print("\n[bold red]⚠️ Configuration error in models.yaml.[/bold red]")
         console.print("[yellow]Please run 'sky init --force' to regenerate it.[/yellow]")
         raise typer.Exit(1)
         
     console.print("\n[bold green]✅ Sky configuration complete![/bold green]")
-    console.print(f"[dim]Configuration saved to: {Path.cwd() / 'models.yaml'}[/dim]")
+    console.print(f"[dim]Configuration saved to: {config_dir}[/dim]")
 
     console.print("\n[bold]Would you like to:[/bold]")
     console.print("  1. [cyan]Check provider connections[/cyan] (sky check-providers)")
@@ -824,7 +830,7 @@ def validate_model(provider: str, model_id: str) -> bool:
     return True
 
 @app.command("check-providers")
-def check_providers():
+def check_providers(global_install: bool = typer.Option(False, "--global", help="Use global config (~/.sky/)")):
     """
     Check provider connectivity and configuration.
 
@@ -840,10 +846,12 @@ def check_providers():
     import httpx
     from dotenv import load_dotenv
     from sky.config import load_models_config
+    from sky.config.schema import get_config_dir
     from sky.errors import ProviderError, SkyError
     import pydantic
     
-    load_dotenv(Path.cwd() / ".env", override=True)
+    config_dir = get_config_dir(global_mode=global_install)
+    load_dotenv(config_dir / ".env", override=True)
     console.print("[bold blue]Checking Providers...[/bold blue]\n")
     
     try:
@@ -930,15 +938,19 @@ def check_providers():
         sys.exit(1)
 
 @app.command("clean")
-def clean():
+def clean(global_install: bool = typer.Option(False, "--global", help="Clean global config (~/.sky/)")):
     """Remove all Sky configuration files."""
     from rich.prompt import Confirm
     import shutil
-    if Confirm.ask("Delete all Sky configuration files (.env, models.yaml, .sky/)?", default=False):
-        for f in [".env", "models.yaml", ".sky/"]:
-            if Path(f).exists():
-                shutil.rmtree(f) if Path(f).is_dir() else Path(f).unlink()
-        console.print("[green]✅ Sky configuration cleaned.[/green]")
+    from sky.config.schema import get_config_dir
+    
+    config_dir = get_config_dir(global_mode=global_install)
+    if Confirm.ask(f"Delete Sky configuration folder ({config_dir})?", default=False):
+        if config_dir.exists():
+            shutil.rmtree(config_dir)
+            console.print(f"[green]✅ Sky configuration cleaned from {config_dir}.[/green]")
+        else:
+            console.print(f"[yellow]No configuration found at {config_dir}.[/yellow]")
 
 @app.command("reset")
 def reset():

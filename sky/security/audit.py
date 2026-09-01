@@ -16,7 +16,8 @@ def log_security_event(event_type: str, details: dict):
         **details
     }
     # Also write to JSONL
-    audit_dir = Path.home() / ".sky" / "audit"
+    from sky.config.schema import get_config_dir
+    audit_dir = get_config_dir() / "audit"
     audit_dir.mkdir(parents=True, exist_ok=True)
     with open(audit_dir / "security.jsonl", "a") as f:
         f.write(json.dumps(event) + "\n")

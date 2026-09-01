@@ -1,6 +1,20 @@
 # Changelog
+## [0.0.10] - 2026-09-01
 
-All notable changes to Sky will be documented in this file.
+### Added
+- Dedicated `.sky/` folder for all configuration files
+- `--global` flag for global configuration (`~/.sky/`)
+- 60-second timeout for agent responses (prevents hanging)
+- Circuit breaker for consecutive tool validation failures
+- Auto-migration of legacy configs (`.env`, `models.yaml`) to `.sky/`
+
+### Fixed
+- Agent mode no longer gets stuck in infinite loop at "Thinking..."
+- Approval gate now shows clear `[y/n/e]` prompt
+- Configuration clutter in project root (all configs now in `.sky/`)
+
+### Removed
+- Stray test files (`test_type.py`, `runinit*.py`, etc.)
 
 ## [0.0.9] - 2024-05-XX
 
