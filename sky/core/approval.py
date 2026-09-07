@@ -71,9 +71,16 @@ class ApprovalGate:
         console.rule(style="red")
         console.print()
 
+        console.print()
+        console.print("[bold]Approve execution?[/bold]")
+        console.print("  [green]y[/green] - Approve and execute")
+        console.print("  [red]n[/red] - Reject (skip this call)")
+        console.print("  [yellow]e[/yellow] - Edit parameters and execute")
+        console.print()
+
         while True:
             response = Prompt.ask(
-                "[bold yellow]Approve execution?[/bold yellow] [dim][y/n/e][/dim]",
+                "Your decision",
                 choices=["y", "n", "e"],
                 default="y"
             )

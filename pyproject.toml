@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sky-dev"
-version = "0.1.2"
+version = "0.1.4"
 description = "Sky - Agentic coding assistant. Build without boundaries."
 readme = "README.md"
 license = {text = "MIT"}

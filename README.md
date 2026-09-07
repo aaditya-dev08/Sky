@@ -60,12 +60,19 @@ sky chat
 - 💰 **Cost Tracking** — Every session shows what it cost
 - 🔄 **Resumable Workflows** — Interrupt and resume anytime
 
-## Providers
+## Models
 
-| Provider | Use Case | Setup |
-|----------|----------|-------|
-| Groq | Planning, Routing, General | `GROQ_API_KEY` in .env |
-| NVIDIA NIM | Coding, Testing, Subagents | `NVIDIA_NIM_API_KEY` in .env |
+Sky uses specialized models for each task:
+
+| Role | Model | Provider |
+|------|-------|----------|
+| General Chat | GPT-OSS 120B | Groq |
+| Planning | Muse Glimmer 30B | NVIDIA NIM |
+| Review | Muse Glimmer 30B | NVIDIA NIM |
+| Routing | Compound Mini | Groq |
+| Tool Calling | Nemotron 120B | NVIDIA NIM |
+| Coding | Nemotron 120B | NVIDIA NIM |
+| Testing | Nemotron 120B | NVIDIA NIM |
 
 ## Commands
 

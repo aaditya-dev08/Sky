@@ -739,18 +739,18 @@ def _write_default_models_yaml(path: Path):
         description: "Ultra-fast routing (0.1s)"
       - id: "openai/gpt-oss-120b"
         description: "Best general conversation"
-      - id: "meta-models/Muse-Glimmer-30B"
-        description: "Dedicated reasoning & planning"
       - id: "qwen/qwen3.6-27b"
         description: "Best-in-class tool calling"
 
   nim:
     base_url: "https://integrate.api.nvidia.com/v1"
     timeout: 60
-    default_model: "mistralai/devstral-2"
+    default_model: "meta/muse-glimmer-30b"
     models:
-      - id: "mistralai/devstral-2"
-        description: "Purpose-built for agentic coding"
+      - id: "meta/muse-glimmer-30b"
+        description: "Purpose-built for agentic reasoning & planning"
+      - id: "nvidia/nemotron-3-super-120b-a12b"
+        description: "Best-in-class tool calling & coding"
       - id: "nvidia/llama-3.1-nemotron-70b-instruct"
         description: "Reliable backup model"
 
@@ -759,43 +759,43 @@ roles:
     provider: "groq"
     model_id: "openai/gpt-oss-120b"
     temperature: 0.7
-    description: "User interaction, chat, explanations"
+    description: "Best general conversation"
 
   planning:
-    provider: "groq"
-    model_id: "meta-models/Muse-Glimmer-30B"
+    provider: "nim"
+    model_id: "meta/muse-glimmer-30b"
     temperature: 0.3
-    description: "Task decomposition, structured planning"
+    description: "Dedicated reasoning & planning"
 
   reviewer:
-    provider: "groq"
-    model_id: "meta-models/Muse-Glimmer-30B"
+    provider: "nim"
+    model_id: "meta/muse-glimmer-30b"
     temperature: 0.3
-    description: "Code review, quality analysis"
+    description: "Code review & analysis"
 
   routing:
-    provider: groq
+    provider: "groq"
     model_id: "groq/compound-mini"
     temperature: 0.0
-    description: "Intent classification, simple decisions"
+    description: "Ultra-fast routing (0.1s)"
 
   fast_loop:
-    provider: "groq"
-    model_id: "qwen/qwen3.6-27b"
+    provider: "nim"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
     temperature: 0.1
-    description: "Parallel tool calling, function execution"
+    description: "Best-in-class tool calling"
 
   coder:
     provider: "nim"
-    model_id: "mistralai/devstral-2"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
     temperature: 0.1
-    description: "Agentic coding, code generation"
+    description: "Agentic coding"
 
   tester:
     provider: "nim"
-    model_id: "mistralai/devstral-2"
+    model_id: "nvidia/nemotron-3-super-120b-a12b"
     temperature: 0.1
-    description: "Test generation, pattern recognition"
+    description: "Test generation & pattern recognition"
 
 fallback:
   provider: "nim"
@@ -932,10 +932,10 @@ def check_providers(global_install: bool = typer.Option(False, "--global", help=
     
         console.print("\n[bold]Model Recommendations:[/bold]")
         console.print("  - [bold]General Interaction:[/bold] openai/gpt-oss-120b (Groq) - Best conversation")
-        console.print("  - [bold]Planning/Reviewing:[/bold] Muse Glimmer (Groq) - Best reasoning")
+        console.print("  - [bold]Planning/Reviewing:[/bold] Muse Glimmer 30B (NIM) - Best reasoning")
         console.print("  - [bold]Routing:[/bold] groq/compound-mini (Groq) - Fastest (0.1s)")
-        console.print("  - [bold]Tool Calling:[/bold] Qwen 27b (Groq) - Best tool use")
-        console.print("  - [bold]Coding/Testing:[/bold] Devstral 2 (NIM) - Best SWE-bench (77.6%)")
+        console.print("  - [bold]Tool Calling:[/bold] Nemotron 120B (NIM) - Best tool use")
+        console.print("  - [bold]Coding/Testing:[/bold] Nemotron 120B (NIM) - Best SWE-bench")
     except SkyError as e:
         console.print(f"\n[bold red]Error ({e.code}):[/bold red] {e.message}")
         if e.suggestion:
@@ -965,6 +965,10 @@ def reset():
 
 if __name__ == "__main__":
     try:
+        app()
+    except Exception as e:
+        console.print(f"[bold red]{_handle_error(e)}[/bold red]")
+        sys.exit(1)
         app()
     except Exception as e:
         console.print(f"[bold red]{_handle_error(e)}[/bold red]")

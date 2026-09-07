@@ -112,6 +112,15 @@ class DexProjectConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     
     project_name: str = "sky-project"
+    mode_roles: Dict[str, str] = Field(
+        default={
+            "ask": "general",
+            "plan": "planning",
+            "agent": "fast_loop",
+            "workflow": "fast_loop",
+        },
+        description="Mapping from mode names to role names"
+    )
     approval_rules: List[ApprovalRuleConfig] = Field(default_factory=list)
     max_retries: int = Field(default=3, ge=1, le=10)
     docker_image: str = "python:3.11-slim"
@@ -295,7 +304,6 @@ def load_models_config(global_mode: bool = False) -> ModelRoutingConfig:
                 models=[
                     ModelInfoConfig(id="groq/compound-mini", description="Ultra-fast routing (0.1s)", context_window=8192, best_for=["routing", "classification"], provider="groq"),
                     ModelInfoConfig(id="openai/gpt-oss-120b", description="Best general conversation", context_window=128000, best_for=["general", "chat"], provider="groq"),
-                    ModelInfoConfig(id="meta-models/Muse-Glimmer-30B", description="Dedicated reasoning & planning", context_window=32768, best_for=["planning", "reviewing"], provider="groq"),
                     ModelInfoConfig(id="qwen/qwen3.6-27b", description="Best-in-class tool calling", context_window=32768, best_for=["tool_calling", "execution"], provider="groq")
                 ]
             ),
@@ -304,21 +312,22 @@ def load_models_config(global_mode: bool = False) -> ModelRoutingConfig:
                 timeout=60,
                 requires_api_key=True,
                 free_tier=True,
-                default_model="mistralai/devstral-2",
+                default_model="meta/muse-glimmer-30b",
                 models=[
-                    ModelInfoConfig(id="mistralai/devstral-2", description="Purpose-built for agentic coding", context_window=131072, best_for=["coding", "tool_use"], provider="nim"),
+                    ModelInfoConfig(id="meta/muse-glimmer-30b", description="Purpose-built for agentic reasoning & planning", context_window=131072, best_for=["planning", "reviewing"], provider="nim"),
+                    ModelInfoConfig(id="nvidia/nemotron-3-super-120b-a12b", description="Best-in-class tool calling & coding", context_window=131072, best_for=["coding", "tool_use"], provider="nim"),
                     ModelInfoConfig(id="nvidia/llama-3.1-nemotron-70b-instruct", description="Reliable backup model", context_window=131072, best_for=["fallback"], provider="nim")
                 ]
             )
         },
         roles={
             "general": ModelAssignmentConfig(provider="groq", model_id="openai/gpt-oss-120b", temperature=0.7),
-            "planning": ModelAssignmentConfig(provider="groq", model_id="meta-models/Muse-Glimmer-30B", temperature=0.3),
-            "reviewer": ModelAssignmentConfig(provider="groq", model_id="meta-models/Muse-Glimmer-30B", temperature=0.3),
+            "planning": ModelAssignmentConfig(provider="nim", model_id="meta/muse-glimmer-30b", temperature=0.3),
+            "reviewer": ModelAssignmentConfig(provider="nim", model_id="meta/muse-glimmer-30b", temperature=0.3),
             "routing": ModelAssignmentConfig(provider="groq", model_id="groq/compound-mini", temperature=0.0),
-            "fast_loop": ModelAssignmentConfig(provider="groq", model_id="qwen/qwen3.6-27b", temperature=0.1),
-            "coder": ModelAssignmentConfig(provider="nim", model_id="mistralai/devstral-2", temperature=0.1),
-            "tester": ModelAssignmentConfig(provider="nim", model_id="mistralai/devstral-2", temperature=0.1),
+            "fast_loop": ModelAssignmentConfig(provider="nim", model_id="nvidia/nemotron-3-super-120b-a12b", temperature=0.1),
+            "coder": ModelAssignmentConfig(provider="nim", model_id="nvidia/nemotron-3-super-120b-a12b", temperature=0.1),
+            "tester": ModelAssignmentConfig(provider="nim", model_id="nvidia/nemotron-3-super-120b-a12b", temperature=0.1),
         },
         fallback=ModelAssignmentConfig(provider="nim", model_id="nvidia/llama-3.1-nemotron-70b-instruct", temperature=0.1),
         timeout_seconds=30,

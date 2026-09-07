@@ -99,6 +99,7 @@ class FastLoopEngine:
                 "content": f"Execution rejected: approval_gate is not initialized.",
             }
             
+        console.print() # Add a blank line
         approved, reason, final_args = self.approval_gate.process(tool_name, args)
         
         if self.config.verbose:
@@ -282,7 +283,10 @@ class FastLoopEngine:
             messages[0]["content"] = prompt
             
         tools = self._get_available_tools(mode, tools_filter)
-        role = "fast_loop"
+        
+        # Get mode-to-role mapping from config
+        mode_roles = getattr(self.config, "mode_roles", {})
+        role = mode_roles.get(mode, "fast_loop")
         
         if self.config.verbose:
             from rich.console import Console

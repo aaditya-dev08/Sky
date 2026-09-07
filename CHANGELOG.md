@@ -1,4 +1,42 @@
 # Changelog
+
+## [0.1.4] - 2026-09-07
+
+### Added
+- Config-driven role mapping in `sky.yaml` (`mode_roles`)
+- Circuit breaker for infinite tool-calling loops
+- 60-second timeout for agent responses
+- Security guardrails for command injection prevention
+
+### Changed
+- `planning` and `reviewer` roles now use `meta/muse-glimmer-30b` via NVIDIA NIM
+- Better error messages for 404 and 500 errors
+- Approval gate UI now shows `[y/n/e]` clearly
+
+### Fixed
+- `sky plan` now correctly uses `planning` role (was using `fast_loop`)
+- `sky ask` now correctly uses `general` role (was using `fast_loop`)
+- Non-existent model IDs replaced with verified models
+- Hardcoded `role = "fast_loop"` removed from `fast_loop.py`
+
+### Security
+- Command injection prevention (`[;&|`]` characters blocked)
+- Path traversal prevention
+- Better error messages for security violations
+## [0.1.3] - 2026-09-07
+
+### Added
+- NVIDIA Nemotron support for agent and workflow modes
+- `nvidia/nemotron-3-super-120b-a12b` as default for fast_loop, coder, tester
+
+### Changed
+- Updated default models.yaml template with Nemotron
+- Improved approval gate UI visibility
+
+### Fixed
+- Approval gate `[y/n/e]` prompt now visible to users
+- Rate limit issues resolved by switching execution roles to NIM
+
 ## [0.1.0] - 2026-09-01
 
 ### Added
