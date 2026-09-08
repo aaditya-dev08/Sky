@@ -32,15 +32,25 @@ def version_callback(value: bool) -> None:
         console.print(f"SKY CLI Version: {__version__}")
         raise typer.Exit()
 
-def _handle_error(e):
-    if "GROQ_API_KEY" in str(e):
-        return "🔑 Missing GROQ_API_KEY. Run 'sky init'."
-    if "NVIDIA_NIM_API_KEY" in str(e):
-        return "🔑 Missing NVIDIA_NIM_API_KEY. Run 'sky init'."
-    if "models.yaml" in str(e):
-        return "⚠️ Configuration error. Run 'sky init --force'."
-    return f"Error: {e}"
-
+def _handle_error(e: Exception):
+    """Handle errors with user-friendly messages."""
+    error_type = type(e).__name__
+    
+    if "API_KEY" in str(e):
+        console.print("[red]🔑 API key error.[/red]")
+        console.print("[yellow]Run `sky init` to set up your API keys.[/yellow]")
+    elif "rate limit" in str(e).lower() or "429" in str(e):
+        console.print("[red]⏳ Rate limit exceeded.[/red]")
+        console.print("[yellow]Wait 60 seconds. Consider using a different provider.[/yellow]")
+    elif "404" in str(e) or "not found" in str(e).lower():
+        console.print("[red]❌ Model or endpoint not found.[/red]")
+        console.print("[yellow]Run `sky check-providers` to see available models.[/yellow]")
+    elif "500" in str(e):
+        console.print("[red]❌ Provider server error.[/red]")
+        console.print("[yellow]Try again later or use a different provider.[/yellow]")
+    else:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print("[dim]Run with `--verbose` for more details.[/dim]")
 
 @app.callback()
 def main(
@@ -196,7 +206,7 @@ async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet:
         db.update_session_status(session_id, "failed")
     except Exception as e:
         if not quiet:
-            console.print(f"[bold red]Execution failed:[/bold red] {e}")
+            _handle_error(e)
         else:
             print(f"Execution failed: {e}", file=sys.stderr)
         db.update_session_status(session_id, "failed")
@@ -395,7 +405,7 @@ def index_repo(
     """
     from sky.config import load_config
     from sky.storage import get_db
-    from sky.memory import VectorStoreManager, RepoIndexer, get_vector_store
+    from sky.memory import get_vector_store, get_indexer
     
     config = load_config()
     db = get_db()
@@ -410,7 +420,7 @@ def index_repo(
             console.print("[yellow]Clearing existing vector store...[/yellow]")
             vector_store.clear()
             
-        indexer = RepoIndexer(config, db, vector_store)
+        indexer = get_indexer(config, db, vector_store)
         
         from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
         with Progress(
@@ -439,7 +449,7 @@ def index_repo(
 def search_context_cmd(query: str, top_k: int = typer.Option(5, "--top-k", help="Number of results")) -> None:
     """Search the indexed repository."""
     from sky.config import load_config
-    from sky.memory import VectorStoreManager, get_vector_store
+    from sky.memory import get_vector_store
     
     config = load_config()
     if not getattr(config, "memory_enabled", False):
@@ -631,9 +641,9 @@ def workflow(
     indexer = None
     if config.memory_enabled:
         from sky.memory.vectorstore import get_vector_store
-        from sky.memory.indexer import RepoIndexer
+        from sky.memory import get_indexer
         vector_store = get_vector_store(Path.cwd() / ".sky" / "vectors")
-        indexer = RepoIndexer(config, db, vector_store)
+        indexer = get_indexer(config, db, vector_store)
     
     # Initialize workflow engine (Lazy import to preserve < 150ms startup)
     from sky.core.workflow import WorkflowEngine

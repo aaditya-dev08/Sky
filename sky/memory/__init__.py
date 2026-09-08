@@ -2,8 +2,9 @@
 
 from typing import TYPE_CHECKING
 
-from sky.memory.indexer import RepoIndexer
-from sky.memory.vectorstore import VectorStoreManager
+if TYPE_CHECKING:
+    from sky.memory.indexer import RepoIndexer
+    from sky.memory.vectorstore import VectorStoreManager
 
 def get_vector_store(*args, **kwargs):
     from sky.memory.vectorstore import get_vector_store as _get_vector_store

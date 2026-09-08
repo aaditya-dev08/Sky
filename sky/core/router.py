@@ -132,6 +132,12 @@ class ModelRouter:
                         client = self.clients[provider_name]
                     else:
                         break
+                elif "404" in error_str or "not found" in error_str:
+                    raise ProviderError(
+                        f"Model not found on provider {provider_name}.",
+                        code="SKY-404",
+                        suggestion="Run `sky check-providers` to see available models."
+                    )
                 else:
                     raise ProviderError(
                         f"Provider {provider_name} request failed: {e}",

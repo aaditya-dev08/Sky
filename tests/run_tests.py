@@ -51,19 +51,20 @@ def main():
     failed = 0
     
     with open(log_file, "a", encoding="utf-8") as log:
-        for line in iter(process.stdout.readline, ''):
-            # Print to stdout safely ignoring charmap errors
-            try:
-                sys.stdout.write(line)
-            except UnicodeEncodeError:
-                sys.stdout.write(line.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding))
+        if process.stdout is not None:
+            for line in iter(process.stdout.readline, ''):
+                # Print to stdout safely ignoring charmap errors
+                try:
+                    sys.stdout.write(line)
+                except UnicodeEncodeError:
+                    sys.stdout.write(line.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding))
+                    
+                log.write(line)
                 
-            log.write(line)
-            
-            if "PASSED" in line:
-                passed += 1
-            elif "FAILED" in line or "ERROR" in line:
-                failed += 1
+                if "PASSED" in line:
+                    passed += 1
+                elif "FAILED" in line or "ERROR" in line:
+                    failed += 1
                 
     process.wait()
     

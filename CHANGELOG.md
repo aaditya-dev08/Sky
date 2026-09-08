@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5] - 2026-09-08
+
+### Added
+- Standardized `docker-sandbox.ps1` and `SETUP.md` for developers running isolated environments.
+
+### Changed
+- Centralized error messages in `sky/errors.py`.
+- Better and actionable recovery suggestions for API Key missing, Rate Limit (429), Model Not Found (404), and Server Error (500).
+- Fully lazy-loaded heavy modules (`lancedb`, `pydantic`, `openai`) resulting in `< 150ms` CLI startup time for basic commands like `sky --help`.
+
+### Fixed
+- Fixed Python type-checking warnings in `errors.py` and `run_tests.py` handling `NoneType` and `Optional[str]` constraints.
 ## [0.1.4] - 2026-09-07
 
 ### Added
