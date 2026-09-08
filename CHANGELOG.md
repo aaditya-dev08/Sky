@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.7] - 2026-09-08
+
+### Changed
+- Exact format specification for the "who built you?" creator prompt to explicitly include "BharatGPT".
 ## [0.1.6] - 2026-09-08
 
 ### Changed
