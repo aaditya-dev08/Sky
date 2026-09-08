@@ -108,6 +108,7 @@ class ChatEngine:
                 # Execute the command
                 import subprocess
                 import shlex
+                import sys
                 try:
                     parts = shlex.split(suggested)
                 except ValueError:

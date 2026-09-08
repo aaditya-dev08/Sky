@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.6] - 2026-09-08
+
+### Changed
+- Improved `sky chat` intelligence by shifting identity and model routing awareness natively into the LLM system prompt.
+- Removed hardcoded interception responses for better maintainability.
+- Sky now clearly lists its multi-model stack (Muse Glimmer, Nemotron, GPT-OSS, Qwen, Compound Mini) while strategically protecting internal routing logic.
 ## [0.1.5] - 2026-09-08
 
 ### Added
