@@ -1,5 +1,65 @@
 # Changelog
 
+## [0.1.14] - 2026-10-06
+
+### Fixed
+- Workflow crash: "No module named 'sky.tools.test_tools'"
+- Workflow hang: 60s timeout added to LLM calls
+- Guardrails crash: "Missing credentials" when API key absent
+- Router now lazily loads provider clients on first use
+- Error messages now reference correct env var name (`NVIDIA_NIM_API_KEY`)
+- `.env` reloaded dynamically for late-loaded keys
+- Client rotation on HTTP 429 rate limit
+
+### Changed
+- Lazy provider initialization (no eager client creation)
+- Graceful Ctrl+C handling during workflow
+- Elapsed time shown for each workflow step
+
+### UI
+- Replaced cloud logo with SKY ASCII art
+- Added username in header (from sky init)
+- Removed model and working directory from chat header
+
+## [0.1.10] - 2026-09-28
+
+### Added
+- Claude-style beautiful terminal UI components (`sky.ui`)
+- Clean ASCII art logo (Option B)
+- Personalized username configuration (`sky init` asks for username)
+
+### Fixed
+- Fixed NVIDIA Guardrails 404 Error by adding a runtime model health-check verification
+- Fixed visual clipping by removing model and working directory from the chat header
+
+## [0.1.9] - 2026-09-28
+
+### Added
+- Dynamic model discovery for guardrails (auto-selects available NIM models)
+- Chat mode now has repository context awareness
+- `_get_repo_context()` for automatic project understanding
+
+### Fixed
+- EOL model issue (`meta/llama-3.1-70b-instruct` was deprecated)
+- Chat mode no longer asks "please share your codebase"
+- Version mismatch between pip and CLI
+
+### Changed
+- Guardrails now auto-discover working models from NVIDIA NIM
+- Chat injects current directory, files, and README snippet
+
+## [0.1.8] - 2026-09-28
+
+### Added
+- Integrated **NVIDIA NIM Guardrails** for advanced, AI-powered security.
+- Added parallel async execution for security checks (`asyncio.gather`), slashing latency for complex validations.
+- New `guardrails` configuration block in `sky.yaml` for granular control over input, response, and topic checks.
+
+### Changed
+- Re-architected `SecurityGuardrails` pipeline to use a **Fast-Reject Regex layer** first, followed by NVIDIA Guardrails.
+- Replaced End-of-Life model `meta/llama-3.1-8b-instruct` with `meta/llama-3.1-70b-instruct` for NVIDIA checks.
+- Disabled `check_response` and `check_topic` by default to maximize general performance.
+
 ## [0.1.7] - 2026-09-08
 
 ### Changed

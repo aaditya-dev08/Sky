@@ -7,6 +7,9 @@ import json
 import logging
 from pathlib import Path
 import asyncio
+import time
+import typer
+from rich.console import Console
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -21,7 +24,7 @@ from sky.core.subagent import SubagentRunner, SubagentRole
 from sky.memory.indexer import RepoIndexer
 
 logger = logging.getLogger(__name__)
-
+console = Console()
 
 class WorkflowStatus(str, Enum):
     """Workflow execution status."""
@@ -154,9 +157,21 @@ class WorkflowEngine:
             import asyncio
             if isinstance(self.event_queue, asyncio.Queue):
                 await self.event_queue.put(event)
+
+    async def _call_model_with_timeout(self, role, messages, timeout=60):
+        try:
+            return await asyncio.wait_for(
+                self.router.route(role, messages, expected_tool_calls=0),
+                timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Model call timed out after {timeout}s")
+            return {}, False, None
     
     async def _refine_goal(self, state: WorkflowState) -> WorkflowState:
         """Refine the user's goal using the planning model."""
+        start = time.time()
+        console.print("[dim]Refining goal...[/dim]")
         await self._emit({"type": "step", "step": "refining", "message": "🎯 Refining goal..."})
         logger.info("Refining goal...")
         
@@ -172,11 +187,10 @@ Be specific about what files or components might be involved."""},
             {"role": "user", "content": state["user_goal"]}
         ]
         
-        response, was_fallback, model_used = await self.router.route(
-            "planning",
-            messages,
-            expected_tool_calls=0,
-        )
+        response, was_fallback, model_used = await self._call_model_with_timeout("planning", messages)
+        
+        elapsed = time.time() - start
+        console.print(f"[dim]Refined in {elapsed:.1f}s[/dim]")
         
         content = response.get("content", "")
         
@@ -192,7 +206,7 @@ Be specific about what files or components might be involved."""},
             else:
                 state["refined_goal"] = content
                 state["goal_confidence"] = 0.5
-        except json.JSONDecodeError:
+        except Exception:
             state["refined_goal"] = content
             state["goal_confidence"] = 0.5
         
@@ -202,6 +216,8 @@ Be specific about what files or components might be involved."""},
     
     async def _decompose(self, state: WorkflowState) -> WorkflowState:
         """Decompose the goal into subtasks."""
+        start = time.time()
+        console.print("[dim]Breaking down into tasks...[/dim]")
         await self._emit({"type": "step", "step": "decomposing", "message": "Breaking down into tasks..."})
         logger.info("Decomposing goal into tasks...")
         
@@ -229,11 +245,10 @@ CRITICAL RULES:
             {"role": "user", "content": f"Goal: {state.get('refined_goal', state['user_goal'])}"}
         ]
         
-        response, was_fallback, model_used = await self.router.route(
-            "planning",
-            messages,
-            expected_tool_calls=0,
-        )
+        response, was_fallback, model_used = await self._call_model_with_timeout("planning", messages)
+        
+        elapsed = time.time() - start
+        console.print(f"[dim]Decomposed in {elapsed:.1f}s[/dim]")
         
         content = response.get("content", "")
         
@@ -254,7 +269,7 @@ CRITICAL RULES:
                     "tools_needed": ["read_file", "write_file", "edit_file", "run_tests"],
                     "role": "coder"
                 }]
-        except json.JSONDecodeError:
+        except Exception:
             state["tasks"] = [{
                 "id": "task_1",
                 "description": state.get("refined_goal", state["user_goal"]),
@@ -363,41 +378,39 @@ CRITICAL RULES:
     
     async def _run_tests(self, state: WorkflowState) -> WorkflowState:
         """Run tests after code changes."""
+        start = time.time()
+        console.print("[dim]Running tests...[/dim]")
         await self._emit({"type": "step", "step": "testing", "message": "Running tests..."})
         logger.info("Running tests...")
         
-        # Collect any test-related changes
-        test_files = []
-        for result in state.get("subagent_results", []):
-            if result.get("test_results"):
-                test_files.extend(result.get("test_files", []))
-        
-        # Run tests using the test tool
-        from sky.tools.test_tools import run_tests
+        from sky.tools.test_tools import run_tests  # Direct import — no fallback
         
         try:
-            # run_tests returns a dict matching exactly what we need
             result = run_tests(timeout=120)
+            state["test_results"] = result
             
-            state["test_results"] = {
-                "passed": result.get("passed", 0),
-                "failed": result.get("failed", 0),
-                "errors": result.get("errors", []),
-                "success": result.get("success", False)
-            }
-            state["status"] = WorkflowStatus.TESTING.value
+            if result.get("framework") == "none":
+                console.print(f"[yellow]⚠️  {result.get('error', 'No test framework detected')}[/yellow]")
+            elif result.get("success"):
+                console.print(f"[green]✅ {result['passed']} passed[/green]")
+            else:
+                console.print(f"[red]❌ {result['failed']} failed, {result['passed']} passed[/red]")
         except Exception as e:
+            logger.error(f"Test execution failed: {e}")
             state["test_results"] = {
-                "passed": 0,
-                "failed": 1,
-                "errors": [str(e)],
-                "success": False
+                "error": str(e),
+                "success": False,
             }
         
+        elapsed = time.time() - start
+        console.print(f"[dim]Tests completed in {elapsed:.1f}s[/dim]")
+        state["status"] = WorkflowStatus.TESTING.value
         return state
     
     async def _reflect(self, state: WorkflowState) -> WorkflowState:
         """Reflect on test results and decide next action."""
+        start = time.time()
+        console.print("[dim]Reflecting on results...[/dim]")
         await self._emit({"type": "step", "step": "reflecting", "message": "Reflecting on results..."})
         logger.info("Reflecting on results...")
         
@@ -452,11 +465,10 @@ Failed tasks: {[t for t in state['task_status'] if state['task_status'][t] == 'f
 Provide analysis and suggested fixes."""}
         ]
         
-        response, was_fallback, model_used = await self.router.route(
-            "planning",
-            messages,
-            expected_tool_calls=0,
-        )
+        response, was_fallback, model_used = await self._call_model_with_timeout("planning", messages)
+        
+        elapsed = time.time() - start
+        console.print(f"[dim]Reflected in {elapsed:.1f}s[/dim]")
         
         content = response.get("content", "")
         
@@ -475,7 +487,7 @@ Provide analysis and suggested fixes."""}
                 for task_id, status in state["task_status"].items():
                     if status == "failed":
                         state["task_status"][task_id] = "pending"
-        except json.JSONDecodeError:
+        except Exception:
             # Fallback: retry failed tasks
             for task_id, status in state["task_status"].items():
                 if status == "failed":
@@ -506,6 +518,8 @@ Provide analysis and suggested fixes."""}
     
     async def _summarize(self, state: WorkflowState) -> WorkflowState:
         """Generate final summary."""
+        start = time.time()
+        console.print("[dim]Generating summary...[/dim]")
         await self._emit({"type": "step", "step": "summarizing", "message": "Generating summary..."})
         logger.info("Generating summary...")
         
@@ -546,11 +560,10 @@ Test Results: {json.dumps(test_results, indent=2)}
 Create a summary of the work."""}
         ]
         
-        response, was_fallback, model_used = await self.router.route(
-            "planning",
-            messages,
-            expected_tool_calls=0,
-        )
+        response, was_fallback, model_used = await self._call_model_with_timeout("planning", messages)
+        
+        elapsed = time.time() - start
+        console.print(f"[dim]Summarized in {elapsed:.1f}s[/dim]")
         
         content = response.get("content", "")
         
@@ -558,6 +571,12 @@ Create a summary of the work."""}
             state["status"] = WorkflowStatus.COMPLETED.value
             
         await self._emit({"type": "complete", "summary": content})
+        
+        console.print()
+        console.print(f"[bold green]✅ Workflow Complete![/bold green]")
+        if state.get("test_results", {}).get("skipped"):
+            console.print("[dim]Note: Tests were skipped[/dim]")
+        console.print()
             
         return state
     
@@ -641,9 +660,13 @@ Create a summary of the work."""}
                 if snapshot:
                     state = snapshot.values
             
-            # Execute asynchronously
-            async for event in app.astream(state, config):
-                pass
+            try:
+                # Execute asynchronously
+                async for event in app.astream(state, config):
+                    pass
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                console.print("\n[yellow]Workflow interrupted. Progress saved to checkpoint.[/yellow]")
+                raise typer.Exit(0)
                 
             # Get final state
             final_state_snapshot = await app.aget_state(config)

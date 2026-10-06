@@ -344,6 +344,29 @@ class FastLoopEngine:
             
             consecutive_tool_failures = 0
             
+            # Response Check
+            from sky.security.guardrails import get_security_guardrails
+            guardrails = get_security_guardrails(self.config)
+            
+            content = response_msg.get("content", "")
+            if content:
+                result = await guardrails.check_response_async(content)
+                if not result["passed"]:
+                    # Blocked by guardrails
+                    safe_content = result.get("suggestion", "I can't provide that response.")
+                    response_msg["content"] = safe_content
+                    # Log the violation
+                    if hasattr(self.db, "_write_audit_log"):
+                        self.db._write_audit_log(self.session_id, {
+                            "type": "guardrails_violation",
+                            "layer": result.get("layer", "nvidia"),
+                            "reason": result["reason"],
+                            "original_response": content[:100]
+                        })
+                    if self.config.verbose:
+                        from rich.console import Console
+                        Console().print(f"[bold red]Guardrails Blocked Response: {result['reason']}[/bold red]")
+
             messages.append(response_msg)
             
             yield {

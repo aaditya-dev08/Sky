@@ -62,11 +62,12 @@ def detect_prompt_injection(text: str) -> List[Dict[str, Any]]:
     
     for category, patterns in PROMPT_INJECTION_PATTERNS.items():
         for pattern in patterns:
-            if re.search(pattern, text, re.IGNORECASE):
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
                 detections.append({
                     "category": category,
                     "pattern": pattern,
-                    "matched_text": re.search(pattern, text, re.IGNORECASE).group(0),
+                    "matched_text": match.group(0),
                 })
     
     return detections

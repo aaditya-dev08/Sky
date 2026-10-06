@@ -106,6 +106,44 @@ class ModelRoutingConfig(BaseModel):
     parallel_tool_calls: bool = True
 
 
+class GuardrailsConfig(BaseModel):
+    """Guardrails configuration."""
+    
+    model_config = ConfigDict(extra="forbid")
+    
+    enabled: bool = Field(default=True, description="Master toggle for all guardrails")
+    strict_mode: bool = Field(
+        default=False,
+        description="If true, block traffic if any guardrail fails"
+    )
+    
+    # NVIDIA guardrails
+    check_input: bool = Field(default=True, description="Check user input for jailbreaks")
+    check_response: bool = Field(
+        default=False,
+        description="Check model responses for safety (adds latency)"
+    )
+    check_topic: bool = Field(
+        default=False,
+        description="Check if input is coding-related (adds latency)"
+    )
+    
+    # Performance options
+    regex_first: bool = Field(
+        default=True,
+        description="Run regex guardrails before NVIDIA (faster)"
+    )
+    parallel_nvidia: bool = Field(
+        default=True,
+        description="Run NVIDIA checks in parallel"
+    )
+    
+    # Model overrides
+    nvidia_model: str = Field(
+        default="meta/llama-3.1-70b-instruct",
+        description="NVIDIA model for guardrail classification"
+    )
+
 class DexProjectConfig(BaseModel):
     """Main project configuration for SKY."""
     
@@ -129,6 +167,9 @@ class DexProjectConfig(BaseModel):
     context_chunk_size: int = Field(default=1000, ge=100)
     context_top_k: int = Field(default=5, ge=1)
     verbose: bool = False
+    
+    # Security & Guardrails
+    guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
     
     # Memory Settings
     memory_enabled: bool = Field(default=True, description="Enable project memory")

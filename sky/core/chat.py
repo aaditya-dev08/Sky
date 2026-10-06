@@ -71,11 +71,7 @@ class ChatEngine:
             self.console.print("[yellow]⚠️ No API keys found. Run 'sky init' first.[/yellow]")
             return
             
-        self.console.print(Panel(
-            Markdown(self.get_welcome_message()),
-            title="☁️ Sky Chat",
-            border_style="cyan"
-        ))
+        # Welcome message is now rendered by SkyHeader in cli.py
         
         if initial_prompt:
             self._process_user_message(initial_prompt)
@@ -126,11 +122,57 @@ class ChatEngine:
         asyncio.run(self._get_chat_response(user_input))
 
 
+    def _get_repo_context(self) -> str:
+        """Get brief context about the current repository."""
+        try:
+            from pathlib import Path
+            import logging
+            cwd = Path.cwd()
+            
+            # Get top-level files and directories
+            items = sorted([item.name for item in cwd.iterdir() 
+                           if not item.name.startswith('.')])[:10]
+            
+            # Check for common project files
+            markers = []
+            for marker in ["README.md", "pyproject.toml", "package.json", 
+                           "requirements.txt", "Cargo.toml", "go.mod"]:
+                if (cwd / marker).exists():
+                    markers.append(marker)
+            
+            # Read README first 500 chars if available
+            readme_snippet = ""
+            readme = cwd / "README.md"
+            if readme.exists():
+                readme_snippet = readme.read_text(encoding="utf-8")[:500]
+            
+            context = f"""Current working directory: {cwd.name}
+Top-level items: {', '.join(items)}
+Project markers: {', '.join(markers) if markers else 'none'}
+
+README excerpt:
+{readme_snippet}
+"""
+            return context
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to get repo context: {e}")
+            return ""
+
     async def _get_chat_response(self, user_input: str):
         """Get response from chat model."""
         if not any(m.get("role") == "system" for m in self.messages):
             from sky.core.mode_prompts import get_mode_prompt
-            self.messages.insert(0, {"role": "system", "content": get_mode_prompt("chat")})
+            repo_context = self._get_repo_context()
+            chat_system_prompt = get_mode_prompt("chat")
+            system_prompt = f"""{chat_system_prompt}
+
+## Current Repository Context
+{repo_context}
+
+Use this context to answer questions about the repository.
+"""
+            self.messages.insert(0, {"role": "system", "content": system_prompt})
             
         self.messages.append({"role": "user", "content": user_input})
         

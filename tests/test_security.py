@@ -6,7 +6,7 @@ import sys
 from typing import Dict, List, Any
 
 class SecurityTest:
-    def __init__(self, command: List[str], expected_behavior: str, description: str):
+    def __init__(self, command: List[str], expected_behavior: str, description: str) -> None:
         self.command = command
         self.expected_behavior = expected_behavior
         self.description = description
@@ -27,9 +27,9 @@ class SecurityTest:
             "passed": self.verify(result)
         }
     
-    def verify(self, result) -> bool:
+    def verify(self, result: subprocess.CompletedProcess) -> bool:
         """Verify if the test passed."""
-        output = (result.stdout + result.stderr).lower()
+        output = str(result.stdout + result.stderr).lower()
         
         if "blocked" in output or "rejected" in output or "refused" in output:
             return True
@@ -50,7 +50,7 @@ class SecurityTest:
             
         return False
 
-def run_tests():
+def run_tests() -> None:
     tests = [
         # Prompt Injection Tests
         SecurityTest(

@@ -22,6 +22,7 @@ import typer
 from rich.console import Console
 
 from sky import __version__
+from sky.ui import render_header, render_message, render_thinking, render_tool_call, render_diff, render_permission
 
 app = typer.Typer(help="SKY - Local CLI-based agentic software development assistant")
 console = Console()
@@ -108,10 +109,10 @@ async def _run_loop(mode: str, prompt: str, inject_context: bool = False, quiet:
             console.print("[bold red]Rate limit exceeded. Please wait before making more requests.[/bold red]")
             raise typer.Exit(1)
             
-        guardrails = get_security_guardrails()
-        guardrails.strict_mode = getattr(config, "security_strict_mode", True)
+        guardrails = get_security_guardrails(config)
         
         is_safe, sanitized_prompt, warning = guardrails.process_user_input(prompt)
+        
         if not is_safe:
             console.print("\n[bold red]🔒 Security Violation Detected[/bold red]")
             console.print("─────────────────────────────────────────")
@@ -238,6 +239,19 @@ def chat(
 
     Created by Aaditya A (AI/ML Intern at CoRover.ai)
     """
+    render_header(
+        version=__version__,
+        tips=[
+            "Ask Sky to explain your code",
+            "Try: sky plan 'add feature X'",
+            "Use sky agent for full execution",
+        ],
+        whats_new=[
+            "Added NVIDIA Guardrails",
+            "Faster CLI startup",
+            "Dynamic model discovery",
+        ],
+    )
     from sky.config import load_config, load_models_config
     from sky.storage import get_db
     from sky.core.router import ModelRouter
@@ -689,6 +703,17 @@ def init(
         
     from sky.config.schema import get_config_dir
     config_dir = get_config_dir(global_mode=global_install)
+    
+    import json
+    import os
+    default_user = os.getenv("USER") or os.getenv("USERNAME") or "Developer"
+    username = Prompt.ask("What should Sky call you?", default=default_user)
+    
+    config_dir.mkdir(parents=True, exist_ok=True)
+    user_config = config_dir / "user.json"
+    with open(user_config, "w") as f:
+        json.dump({"username": username}, f)
+    console.print(f"[green]✅ Username saved: {username}[/green]")
         
     def _save_env(groq_key: str, nim_key: str):
         with open(config_dir / ".env", "w") as f:
@@ -833,7 +858,7 @@ def validate_model(provider: str, model_id: str) -> bool:
             except:
                 pass
     elif provider == "nim":
-        key = os.getenv("NIM_API_KEY")
+        key = os.getenv("NVIDIA_NIM_API_KEY")
         if key:
             try:
                 res = httpx.get("https://integrate.api.nvidia.com/v1/models", headers={"Authorization": f"Bearer {key}"})

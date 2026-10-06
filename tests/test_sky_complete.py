@@ -129,7 +129,7 @@ def test_ask_with_tools():
 def test_chat_welcome():
     """Verify chat mode opens and closes."""
     result = run_sky(["chat"], input_str="exit\n")
-    assert "Sky Chat Mode" in result.stdout
+    assert "Tips for getting started" in result.stdout
     assert "Goodbye" in result.stdout
 
 def test_chat_identity():

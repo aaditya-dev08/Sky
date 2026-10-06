@@ -35,7 +35,7 @@ ERROR_MESSAGES = {
         "message": "🔑 Groq API key not found.",
         "suggestion": "Run `sky init` to set up your API keys, or add GROQ_API_KEY to .env"
     },
-    "NIM_API_KEY_MISSING": {
+    "NVIDIA_NIM_API_KEY_MISSING": {
         "message": "🔑 NVIDIA NIM API key not found.",
         "suggestion": "Run `sky init` to set up your API keys, or add NVIDIA_NIM_API_KEY to .env"
     },

@@ -14,6 +14,16 @@ class ModelRouter:
 
     def __init__(self, config: ModelRoutingConfig, db: DatabaseManager, session_id: str):
         import os
+        from dotenv import load_dotenv
+        from sky.config.schema import get_config_dir
+        
+        # Load .env
+        env_path = get_config_dir() / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+        else:
+            load_dotenv()
+            
         self.config = config
         self.db = db
         self.session_id = session_id
@@ -22,42 +32,57 @@ class ModelRouter:
         self.provider_keys = {}
         self.current_key_idx = {}
         
-        for provider_name, provider_config in self.config.providers.items():
-            if provider_config.requires_api_key:
-                # Find keys for this provider, e.g., GROQ_API_KEY, NIM_API_KEY
-                env_prefix = "NVIDIA_NIM" if provider_name == "nim" else provider_name.upper()
-                keys = []
-                for key_name in [f"{env_prefix}_API_KEY", f"{env_prefix}_API_KEY_2", f"{env_prefix}_API_KEY_3"]:
-                    key = os.getenv(key_name)
-                    if key:
-                        keys.append(key)
-                if not keys:
-                    # Log a warning, but don't crash unless they try to use it
-                    pass
-                else:
-                    self.provider_keys[provider_name] = keys
-                    self.current_key_idx[provider_name] = 0
-            else:
-                self.provider_keys[provider_name] = ["dummy"]
-                self.current_key_idx[provider_name] = 0
-                
-            self._init_client(provider_name)
+    def _get_client(self, provider_name: str) -> Any:
+        """Get or initialize the client for a specific provider."""
+        import os
         
-    def _init_client(self, provider_name: str):
-        """Initialize the client for a specific provider."""
+        if provider_name in self.clients:
+            return self.clients[provider_name]
+            
         provider_config = self.config.providers.get(provider_name)
         if not provider_config:
-            return
+            return None
             
-        keys = self.provider_keys.get(provider_name, [])
-        if not keys:
-            return
+        if provider_config.requires_api_key:
+            env_prefix = "NVIDIA_NIM" if provider_name == "nim" else provider_name.upper()
+            keys = []
+            for key_name in [f"{env_prefix}_API_KEY", f"{env_prefix}_API_KEY_2", f"{env_prefix}_API_KEY_3"]:
+                key = os.getenv(key_name)
+                if key:
+                    keys.append(key)
+            if not keys:
+                return None
+                
+            self.provider_keys[provider_name] = keys
+            self.current_key_idx[provider_name] = 0
+            api_key = keys[0]
+        else:
+            self.provider_keys[provider_name] = ["dummy"]
+            self.current_key_idx[provider_name] = 0
+            api_key = "dummy"
             
-        idx = self.current_key_idx.get(provider_name, 0)
-        api_key = keys[idx]
-        
         kwargs = {
             "api_key": api_key,
+            "timeout": httpx.Timeout(provider_config.timeout)
+        }
+        if provider_config.base_url:
+            kwargs["base_url"] = provider_config.base_url
+            
+        self.clients[provider_name] = AsyncOpenAI(**kwargs)
+        return self.clients[provider_name]
+
+    def _rotate_client(self, provider_name: str):
+        """Rotate to the next API key and reinitialize the client."""
+        keys = self.provider_keys.get(provider_name, [])
+        if len(keys) <= 1:
+            return
+            
+        next_idx = (self.current_key_idx[provider_name] + 1) % len(keys)
+        self.current_key_idx[provider_name] = next_idx
+        
+        provider_config = self.config.providers.get(provider_name)
+        kwargs = {
+            "api_key": keys[next_idx],
             "timeout": httpx.Timeout(provider_config.timeout)
         }
         if provider_config.base_url:
@@ -106,12 +131,13 @@ class ModelRouter:
         """Call API, rotating keys if rate limit is hit."""
         from rich.console import Console
         
-        client = self.clients.get(provider_name)
+        client = self._get_client(provider_name)
         if not client:
+            env_prefix = "NVIDIA_NIM" if provider_name == "nim" else provider_name.upper()
             raise ConfigurationError(
                 f"No active client for provider: {provider_name}.",
                 code="SKY-001",
-                suggestion=f"Add {provider_name.upper()}_API_KEY to .env or run `sky init`"
+                suggestion=f"Add {env_prefix}_API_KEY to .env or run `sky init`"
             )
             
         keys = self.provider_keys.get(provider_name, [])
@@ -127,8 +153,7 @@ class ModelRouter:
                     if len(keys) > 1:
                         next_idx = (self.current_key_idx[provider_name] + 1) % len(keys)
                         Console().print(f"[yellow]{provider_name.upper()} API key rate limited. Rotating to next key (slot {next_idx + 1}/{len(keys)})...[/yellow]")
-                        self.current_key_idx[provider_name] = next_idx
-                        self._init_client(provider_name)
+                        self._rotate_client(provider_name)
                         client = self.clients[provider_name]
                     else:
                         break
